@@ -92,6 +92,10 @@ type EmbeddedHarborSpec struct {
 	// +kubebuilder:validation:Pattern="[0-9]+\\.[0-9]+\\.[0-9]+"
 	// The version of the harbor, eg 2.1.2
 	Version string `json:"version"`
+
+	// +kubebuilder:validation:Optional
+	// Affinity is a group of affinity scheduling rules.
+	Affinity *corev1.Affinity `json:"affinity"`
 }
 
 type EmbeddedHarborComponentsSpec struct {

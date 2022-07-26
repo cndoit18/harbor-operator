@@ -207,6 +207,10 @@ type HarborSpec struct {
 	// +kubebuilder:validation:Optional
 	// Trace settings for the harbor
 	Trace *harbormetav1.TraceSpec `json:"trace,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// Affinity is a group of affinity scheduling rules.
+	Affinity *corev1.Affinity `json:"affinity" defaulter:"spec.template.spec.affinity,spec.affinity"`
 }
 
 func (spec *HarborSpec) ValidateNotary() *field.Error {

@@ -2,16 +2,20 @@ package mutation_test
 
 import (
 	"context"
+	"reflect"
+	"testing"
 
+	goharborv1 "github.com/goharbor/harbor-operator/apis/goharbor.io/v1beta1"
 	. "github.com/goharbor/harbor-operator/pkg/controller/mutation"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	"github.com/goharbor/harbor-operator/pkg/resources"
 	"github.com/goharbor/harbor-operator/pkg/scheme"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gstruct"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -148,3 +152,107 @@ var _ = Describe("Mutate the owner reference", func() {
 		})
 	})
 })
+
+func TestGetOverrideMutation(t *testing.T) {
+	type args struct {
+		owner runtime.Object
+		obj   runtime.Object
+	}
+	tests := []struct {
+		name string
+		args args
+		want runtime.Object
+	}{
+		{
+			"not override",
+			args{
+				&goharborv1.Harbor{
+					Spec: goharborv1.HarborSpec{
+						Affinity: &corev1.Affinity{},
+					},
+				},
+				&appsv1.Deployment{
+					Spec: appsv1.DeploymentSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Affinity: &corev1.Affinity{
+									NodeAffinity: &corev1.NodeAffinity{},
+								},
+							},
+						},
+					},
+				},
+			},
+			&appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Affinity: &corev1.Affinity{
+								NodeAffinity: &corev1.NodeAffinity{},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			"override",
+			args{
+				&goharborv1.Harbor{
+					Spec: goharborv1.HarborSpec{
+						Affinity: &corev1.Affinity{
+							NodeAffinity: &corev1.NodeAffinity{},
+						},
+					},
+				},
+				&appsv1.Deployment{
+					Spec: appsv1.DeploymentSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{},
+						},
+					},
+				},
+			},
+			&appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Affinity: &corev1.Affinity{
+								NodeAffinity: &corev1.NodeAffinity{},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			"not setting",
+			args{
+				&goharborv1.Harbor{
+					Spec: goharborv1.HarborSpec{},
+				},
+				&appsv1.Deployment{
+					Spec: appsv1.DeploymentSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{},
+						},
+					},
+				},
+			},
+			&appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _ = GetOverrideMutation(tt.args.owner)(context.TODO(), tt.args.obj); !reflect.DeepEqual(tt.args.obj, tt.want) {
+				t.Errorf("GetOverrideMutation() = %v, want %v", tt.args.obj, tt.want)
+			}
+		})
+	}
+}
